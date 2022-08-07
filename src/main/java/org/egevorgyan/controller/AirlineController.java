@@ -10,8 +10,7 @@ import javax.ws.rs.core.Response;
 import java.util.List;
 import java.util.Optional;
 
-import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
-import static javax.ws.rs.core.Response.Status.NOT_FOUND;
+import static javax.ws.rs.core.Response.Status.*;
 
 @AllArgsConstructor
 @Path("/airlines")
@@ -26,7 +25,7 @@ public class AirlineController {
         long id = airlineEntity.getId();
         Optional<AirlineEntity> response = airlineService.createAirline(id, airlineEntity);
         if(response.isPresent()) {
-            return Response.ok(response.get()).status(201).build();
+            return Response.ok(response.get()).status(CREATED).build();
         }
         return Response.status(BAD_REQUEST).entity("The airline with id: " + id + " already exist").build();
     }
@@ -51,7 +50,17 @@ public class AirlineController {
     public Response updateAirline(@PathParam("id") long id, AirlineEntity airlineEntity) {
         Optional<AirlineEntity> response = airlineService.updateAirline(id, airlineEntity);
         if(response.isPresent()) {
-            return Response.ok(response.get()).status(201).build();
+            return Response.ok(response.get()).status(CREATED).build();
+        }
+        return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
+    }
+
+    @DELETE
+    @Path("/{id}")
+    public Response deleteAirline(@PathParam("id") long id) {
+        boolean deleted = airlineService.deleteAirline(id);
+        if(deleted) {
+            return Response.status(NO_CONTENT).build();
         }
         return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
     }

@@ -70,6 +70,16 @@ public class AirlineService {
         }
     }
 
+    public boolean deleteAirline(long id) {
+        try {
+            collection.remove(getDocumentId(id));
+            return true;
+        } catch (DocumentNotFoundException e) {
+            return false;
+        }
+
+    }
+
     private static String getDocumentId(long id) {
         return "airline_" + id;
     }
