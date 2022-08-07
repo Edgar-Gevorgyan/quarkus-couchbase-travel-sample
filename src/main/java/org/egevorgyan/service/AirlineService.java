@@ -18,8 +18,8 @@ public class AirlineService {
 
     private final CouchbaseConfig couchbaseConfig;
 
-    private Cluster cluster;
-    private Collection collection;
+    Cluster cluster;
+    Collection collection;
 
     public AirlineService(CouchbaseConfig couchbaseConfig) {
         this.couchbaseConfig = couchbaseConfig;
