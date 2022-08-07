@@ -15,7 +15,7 @@ import java.util.List;
 @Consumes(MediaType.APPLICATION_JSON)
 public class AirlineController {
 
-    AirlineService airlineService;
+    private AirlineService airlineService;
 
     @POST
     public Response addAirline(AirlineEntity airlineEntity) {

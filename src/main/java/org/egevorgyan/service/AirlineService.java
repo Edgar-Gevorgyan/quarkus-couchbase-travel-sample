@@ -3,17 +3,36 @@ package org.egevorgyan.service;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
+import org.egevorgyan.config.CouchbaseConfig;
 import org.egevorgyan.model.AirlineEntity;
 
-import javax.enterprise.context.ApplicationScoped;
+import javax.annotation.PostConstruct;
+import javax.inject.Singleton;
 import java.util.List;
 
-@ApplicationScoped
+@Singleton
 public class AirlineService {
 
-    final Cluster cluster = Cluster.connect("127.0.0.1", "couchbase", "couchbase");
-    final Bucket bucket = cluster.bucket("travel-sample");
-    final Collection collection = bucket.defaultCollection();
+    private final CouchbaseConfig couchbaseConfig;
+
+    private Cluster cluster;
+    private Collection collection;
+
+    public AirlineService(CouchbaseConfig couchbaseConfig) {
+        this.couchbaseConfig = couchbaseConfig;
+    }
+
+    @PostConstruct
+    void initialize() {
+        cluster = Cluster.connect(
+                couchbaseConfig.host(),
+                couchbaseConfig.username(),
+                couchbaseConfig.password()
+        );
+        Bucket bucket = cluster.bucket(couchbaseConfig.bucketName());
+        collection = bucket.defaultCollection();
+    }
+
 
     public AirlineEntity createAirline(AirlineEntity airlineEntity) {
         collection.insert(getDocumentId(airlineEntity.getId()), airlineEntity);
