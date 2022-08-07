@@ -1,5 +1,7 @@
 package org.egevorgyan.service;
 
+import com.couchbase.client.core.error.DocumentExistsException;
+import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
@@ -9,6 +11,7 @@ import org.egevorgyan.model.AirlineEntity;
 import javax.annotation.PostConstruct;
 import javax.inject.Singleton;
 import java.util.List;
+import java.util.Optional;
 
 @Singleton
 public class AirlineService {
@@ -34,9 +37,13 @@ public class AirlineService {
     }
 
 
-    public AirlineEntity createAirline(AirlineEntity airlineEntity) {
-        collection.insert(getDocumentId(airlineEntity.getId()), airlineEntity);
-        return airlineEntity;
+    public Optional<AirlineEntity> createAirline(long id, AirlineEntity airlineEntity) {
+        try {
+            collection.insert(getDocumentId(id), airlineEntity);
+            return Optional.of(airlineEntity);
+        } catch (DocumentExistsException e) {
+            return Optional.empty();
+        }
     }
 
     public List<AirlineEntity> getAllAirlines() {
@@ -44,14 +51,23 @@ public class AirlineService {
                 .rowsAs(AirlineEntity.class);
     }
 
-    public AirlineEntity getAirline(long id) {
-        return collection.get(getDocumentId(id)).contentAs(AirlineEntity.class);
+    public Optional<AirlineEntity> getAirline(long id) {
+        try {
+            AirlineEntity airlineEntity = collection.get(getDocumentId(id)).contentAs(AirlineEntity.class);
+            return Optional.of(airlineEntity);
+        } catch (DocumentNotFoundException e) {
+            return Optional.empty();
+        }
     }
 
-    public AirlineEntity updateAirline(long id, AirlineEntity airlineEntity) {
-        airlineEntity.setId(id);
-        collection.replace(getDocumentId(id), airlineEntity);
-        return airlineEntity;
+    public Optional<AirlineEntity> updateAirline(long id, AirlineEntity airlineEntity) {
+        try {
+            airlineEntity.setId(id);
+            collection.replace(getDocumentId(id), airlineEntity);
+            return Optional.of(airlineEntity);
+        } catch (DocumentNotFoundException e) {
+            return Optional.empty();
+        }
     }
 
     private static String getDocumentId(long id) {

@@ -8,6 +8,10 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.Optional;
+
+import static javax.ws.rs.core.Response.Status.BAD_REQUEST;
+import static javax.ws.rs.core.Response.Status.NOT_FOUND;
 
 @AllArgsConstructor
 @Path("/airlines")
@@ -19,8 +23,12 @@ public class AirlineController {
 
     @POST
     public Response addAirline(AirlineEntity airlineEntity) {
-        AirlineEntity response = airlineService.createAirline(airlineEntity);
-        return Response.ok(response).status(201).build();
+        long id = airlineEntity.getId();
+        Optional<AirlineEntity> response = airlineService.createAirline(id, airlineEntity);
+        if(response.isPresent()) {
+            return Response.ok(response.get()).status(201).build();
+        }
+        return Response.status(BAD_REQUEST).entity("The airline with id: " + id + " already exist").build();
     }
 
     @GET
@@ -30,14 +38,21 @@ public class AirlineController {
 
     @GET
     @Path("/{id}")
-    public AirlineEntity getAirline(@PathParam("id") long id) {
-        return airlineService.getAirline(id);
+    public Response getAirline(@PathParam("id") long id) {
+        Optional<AirlineEntity> airlineEntity = airlineService.getAirline(id);
+        if(airlineEntity.isPresent()) {
+            return Response.ok(airlineEntity.get()).build();
+        }
+        return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
     }
 
     @PUT
     @Path("/{id}")
     public Response updateAirline(@PathParam("id") long id, AirlineEntity airlineEntity) {
-        AirlineEntity response = airlineService.updateAirline(id, airlineEntity);
-        return Response.ok(response).status(201).build();
+        Optional<AirlineEntity> response = airlineService.updateAirline(id, airlineEntity);
+        if(response.isPresent()) {
+            return Response.ok(response.get()).status(201).build();
+        }
+        return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
     }
 }
