@@ -1,0 +1,1 @@
+# quarkus-couchbase-travel-sample
