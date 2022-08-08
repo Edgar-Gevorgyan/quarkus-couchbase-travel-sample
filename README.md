@@ -154,7 +154,6 @@ couchbase:
   host: <COUCHBASE_SERVER_HOST>
   username: <COUCHBASE_SERVER_USERNAME>
   password: <COUCHBASE_SERVER_PASSWORD>
-  bucketName: travel-sample
 ```
 
 ## Running the application in dev mode

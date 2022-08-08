@@ -32,7 +32,7 @@ public class AirlineService {
                 couchbaseConfig.username(),
                 couchbaseConfig.password()
         );
-        Bucket bucket = cluster.bucket(couchbaseConfig.bucketName());
+        Bucket bucket = cluster.bucket("travel-sample");
         collection = bucket.defaultCollection();
     }
 

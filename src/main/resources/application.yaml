@@ -2,4 +2,3 @@ couchbase:
   host: 127.0.0.1
   username: couchbase
   password: couchbase
-  bucketName: travel-sample

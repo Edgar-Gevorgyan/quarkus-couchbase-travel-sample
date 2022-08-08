@@ -7,5 +7,4 @@ public interface CouchbaseConfig {
     String host();
     String username();
     String password();
-    String bucketName();
 }
