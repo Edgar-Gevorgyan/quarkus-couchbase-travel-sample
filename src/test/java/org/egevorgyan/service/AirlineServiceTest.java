@@ -4,142 +4,161 @@ import com.couchbase.client.core.error.DocumentExistsException;
 import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
+import com.couchbase.client.java.ReactiveCluster;
+import com.couchbase.client.java.ReactiveCollection;
 import com.couchbase.client.java.kv.GetResult;
 import com.couchbase.client.java.kv.MutationResult;
-import com.couchbase.client.java.query.QueryResult;
-import org.egevorgyan.config.CouchbaseConfig;
+import com.couchbase.client.java.query.ReactiveQueryResult;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.helpers.test.UniAssertSubscriber;
 import org.egevorgyan.model.AirlineEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.util.List;
-import java.util.Optional;
 
 @ExtendWith(MockitoExtension.class)
 class AirlineServiceTest {
 
-    @Mock
-    CouchbaseConfig couchbaseConfig;
     @InjectMocks
     AirlineService underTest;
 
     @Test
     void should_succeed_createAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
         MutationResult result = Mockito.mock(MutationResult.class);
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.insert("airline_" + expected.getId(), expected)).thenReturn(result);
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.insert("airline_" + expected.getId(), expected)).thenReturn(Mono.just(result));
 
-        Optional<AirlineEntity> actual = underTest.createAirline(expected.getId(), expected);
+        AirlineEntity actual = underTest.createAirline(expected.getId(), expected).await().indefinitely();
 
-        Assertions.assertTrue(actual.isPresent());
-        Assertions.assertEquals(expected, actual.get());
+        Assertions.assertEquals(expected, actual);
     }
 
     @Test
     void should_fail_createAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.insert("airline_" + expected.getId(), expected)).thenThrow(new DocumentExistsException(null));
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.insert("airline_" + expected.getId(), expected)).thenReturn(Mono.error(new DocumentExistsException(null)));
 
-        Optional<AirlineEntity> actual = underTest.createAirline(expected.getId(), expected);
+        Uni<AirlineEntity> actual = underTest.createAirline(expected.getId(), expected);
+        UniAssertSubscriber<AirlineEntity> subscriber = actual.subscribe().withSubscriber(UniAssertSubscriber.create());
 
-        Assertions.assertFalse(actual.isPresent());
+        subscriber.assertFailed();
     }
 
     @Test
     void should_succeed_getAllAirlines() {
         underTest.cluster = Mockito.mock(Cluster.class);
-        QueryResult result = Mockito.mock(QueryResult.class);
+        ReactiveCluster reactiveCluster = Mockito.mock(ReactiveCluster.class);
+        Mono<ReactiveQueryResult> queryResultMono = Mockito.mock(Mono.class);
+        Flux<ReactiveQueryResult> queryResultFlux = Mockito.mock(Flux.class);
 
         List<AirlineEntity> expected = List.of(
                 new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States")
         );
 
-        Mockito.when(underTest.cluster.query("select airline.* from `travel-sample`.inventory.airline")).thenReturn(result);
-        Mockito.when(result.rowsAs(AirlineEntity.class)).thenReturn(expected);
+        Mockito.when(underTest.cluster.reactive()).thenReturn(reactiveCluster);
+        Mockito.when(reactiveCluster.query("select airline.* from `travel-sample`.inventory.airline")).thenReturn(queryResultMono);
+        Mockito.when(queryResultMono.flux()).thenReturn(queryResultFlux);
+        Mockito.when(queryResultFlux.flatMap(Mockito.any())).thenReturn(Flux.fromIterable(expected));
 
-        List<AirlineEntity> actual = underTest.getAllAirlines();
+        var actual = underTest.getAllAirlines().subscribe().asStream().toArray();
 
-        Assertions.assertArrayEquals(expected.toArray(), actual.toArray());
+        Assertions.assertArrayEquals(expected.toArray(), actual);
     }
 
     @Test
     void should_succeed_getAirline() {
         underTest.collection = Mockito.mock(Collection.class);
-        GetResult result = Mockito.mock(GetResult.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
+        Mono<GetResult> result = Mockito.mock(Mono.class);
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.get("airline_" + expected.getId())).thenReturn(result);
-        Mockito.when(result.contentAs(AirlineEntity.class)).thenReturn(expected);
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.get("airline_" + expected.getId())).thenReturn(result);
+        Mockito.when(result.map(Mockito.any())).thenReturn(Mono.just(expected));
 
-        Optional<AirlineEntity> actual = underTest.getAirline(expected.getId());
+        AirlineEntity actual = underTest.getAirline(expected.getId()).await().indefinitely();
 
-        Assertions.assertTrue(actual.isPresent());
-        Assertions.assertEquals(expected, actual.get());
+        Assertions.assertEquals(expected, actual);
     }
 
     @Test
     void should_fail_getAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.get("airline_" + expected.getId())).thenThrow(new DocumentNotFoundException(null));
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.get("airline_" + expected.getId())).thenReturn(Mono.error(new DocumentNotFoundException(null)));
 
-        Optional<AirlineEntity> actual = underTest.getAirline(expected.getId());
+        Uni<AirlineEntity> actual = underTest.getAirline(expected.getId());
+        UniAssertSubscriber<AirlineEntity> subscriber = actual.subscribe().withSubscriber(UniAssertSubscriber.create());
 
-        Assertions.assertFalse(actual.isPresent());
+        subscriber.assertFailed();
     }
 
     @Test
     void should_succeed_updateAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
         MutationResult result = Mockito.mock(MutationResult.class);
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.replace("airline_" + expected.getId(), expected)).thenReturn(result);
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.replace("airline_" + expected.getId(), expected)).thenReturn(Mono.just(result));
 
-        Optional<AirlineEntity> actual = underTest.updateAirline(expected.getId(), expected);
+        AirlineEntity actual = underTest.updateAirline(expected.getId(), expected).await().indefinitely();
 
-        Assertions.assertTrue(actual.isPresent());
-        Assertions.assertEquals(expected, actual.get());
+        Assertions.assertEquals(expected, actual);
     }
 
     @Test
     void should_fail_updateAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.replace("airline_" + expected.getId(), expected)).thenThrow(new DocumentNotFoundException(null));
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.replace("airline_" + expected.getId(), expected)).thenReturn(Mono.error(new DocumentNotFoundException(null)));
 
-        Optional<AirlineEntity> actual = underTest.updateAirline(expected.getId(), expected);
+        Uni<AirlineEntity> actual = underTest.updateAirline(expected.getId(), expected);
+        UniAssertSubscriber<AirlineEntity> subscriber = actual.subscribe().withSubscriber(UniAssertSubscriber.create());
 
-        Assertions.assertFalse(actual.isPresent());
+        subscriber.assertFailed();
     }
 
     @Test
     void should_succeed_deleteAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
         MutationResult result = Mockito.mock(MutationResult.class);
 
-        long id = 1;
+        AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.remove("airline_" + id)).thenReturn(result);
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.remove("airline_" + expected.getId())).thenReturn(Mono.just(result));
 
-        boolean actual = underTest.deleteAirline(id);
+        Boolean actual = underTest.deleteAirline(expected.getId()).await().indefinitely();
 
         Assertions.assertTrue(actual);
     }
@@ -147,13 +166,16 @@ class AirlineServiceTest {
     @Test
     void should_fail_deleteAirline() {
         underTest.collection = Mockito.mock(Collection.class);
+        ReactiveCollection reactiveCollection = Mockito.mock(ReactiveCollection.class);
 
-        long id = 1;
+        AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(underTest.collection.remove("airline_" + id)).thenThrow(new DocumentNotFoundException(null));
+        Mockito.when(underTest.collection.reactive()).thenReturn(reactiveCollection);
+        Mockito.when(reactiveCollection.remove("airline_" + expected.getId())).thenReturn(Mono.error(new DocumentNotFoundException(null)));
 
-        boolean actual = underTest.deleteAirline(id);
+        Uni<Boolean> actual = underTest.deleteAirline(expected.getId());
+        UniAssertSubscriber<Boolean> subscriber = actual.subscribe().withSubscriber(UniAssertSubscriber.create());
 
-        Assertions.assertFalse(actual);
+        subscriber.assertFailed();
     }
 }

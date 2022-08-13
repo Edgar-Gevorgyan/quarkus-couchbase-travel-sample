@@ -1,17 +1,15 @@
 package org.egevorgyan.service;
 
-import com.couchbase.client.core.error.DocumentExistsException;
-import com.couchbase.client.core.error.DocumentNotFoundException;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.Cluster;
 import com.couchbase.client.java.Collection;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import org.egevorgyan.config.CouchbaseConfig;
 import org.egevorgyan.model.AirlineEntity;
 
 import javax.annotation.PostConstruct;
 import javax.inject.Singleton;
-import java.util.List;
-import java.util.Optional;
 
 @Singleton
 public class AirlineService {
@@ -37,47 +35,40 @@ public class AirlineService {
     }
 
 
-    public Optional<AirlineEntity> createAirline(long id, AirlineEntity airlineEntity) {
-        try {
-            collection.insert(getDocumentId(id), airlineEntity);
-            return Optional.of(airlineEntity);
-        } catch (DocumentExistsException e) {
-            return Optional.empty();
-        }
+    public Uni<AirlineEntity> createAirline(long id, AirlineEntity airlineEntity) {
+        var airline = collection.reactive()
+                .insert(getDocumentId(id), airlineEntity)
+                .map(mutationResultMono -> airlineEntity);
+        return Uni.createFrom().publisher(airline);
     }
 
-    public List<AirlineEntity> getAllAirlines() {
-        return cluster.query("select airline.* from `travel-sample`.inventory.airline")
-                .rowsAs(AirlineEntity.class);
+    public Multi<AirlineEntity> getAllAirlines() {
+        var airlines = cluster.reactive()
+                .query("select airline.* from `travel-sample`.inventory.airline")
+                .flux().flatMap(result -> result.rowsAs(AirlineEntity.class));
+        return Multi.createFrom().publisher(airlines);
     }
 
-    public Optional<AirlineEntity> getAirline(long id) {
-        try {
-            AirlineEntity airlineEntity = collection.get(getDocumentId(id)).contentAs(AirlineEntity.class);
-            return Optional.of(airlineEntity);
-        } catch (DocumentNotFoundException e) {
-            return Optional.empty();
-        }
+    public Uni<AirlineEntity> getAirline(long id) {
+        var airline = collection.reactive()
+                .get(getDocumentId(id))
+                .map(result -> result.contentAs(AirlineEntity.class));
+        return Uni.createFrom().publisher(airline);
     }
 
-    public Optional<AirlineEntity> updateAirline(long id, AirlineEntity airlineEntity) {
-        try {
-            airlineEntity.setId(id);
-            collection.replace(getDocumentId(id), airlineEntity);
-            return Optional.of(airlineEntity);
-        } catch (DocumentNotFoundException e) {
-            return Optional.empty();
-        }
+    public Uni<AirlineEntity> updateAirline(long id, AirlineEntity airlineEntity) {
+        airlineEntity.setId(id);
+        var airline = collection.reactive()
+                .replace(getDocumentId(id), airlineEntity)
+                .map(mutationResultMono -> airlineEntity);
+        return Uni.createFrom().publisher(airline);
     }
 
-    public boolean deleteAirline(long id) {
-        try {
-            collection.remove(getDocumentId(id));
-            return true;
-        } catch (DocumentNotFoundException e) {
-            return false;
-        }
-
+    public Uni<Boolean> deleteAirline(long id) {
+        var airline = collection.reactive()
+                .remove(getDocumentId(id))
+                .map(mutationResultMono -> true);
+        return Uni.createFrom().publisher(airline);
     }
 
     private static String getDocumentId(long id) {

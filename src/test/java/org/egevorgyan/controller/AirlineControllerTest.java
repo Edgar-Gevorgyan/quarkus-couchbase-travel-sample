@@ -1,5 +1,7 @@
 package org.egevorgyan.controller;
 
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import org.egevorgyan.model.AirlineEntity;
 import org.egevorgyan.service.AirlineService;
 import org.junit.jupiter.api.Assertions;
@@ -12,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.ws.rs.core.Response;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static javax.ws.rs.core.Response.Status.*;
 
@@ -29,9 +31,9 @@ class AirlineControllerTest {
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(airlineService.createAirline(expected.getId(), expected)).thenReturn(Optional.of(expected));
+        Mockito.when(airlineService.createAirline(expected.getId(), expected)).thenReturn(Uni.createFrom().item(expected));
 
-        Response actual = underTest.addAirline(expected);
+        Response actual = underTest.addAirline(expected).await().indefinitely();
 
         Assertions.assertEquals(CREATED.getStatusCode(), actual.getStatus());
         Assertions.assertEquals(expected, actual.getEntity());
@@ -42,9 +44,9 @@ class AirlineControllerTest {
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(airlineService.createAirline(expected.getId(), expected)).thenReturn(Optional.empty());
+        Mockito.when(airlineService.createAirline(expected.getId(), expected)).thenReturn(Uni.createFrom().failure(new Exception()));
 
-        Response actual = underTest.addAirline(expected);
+        Response actual = underTest.addAirline(expected).await().indefinitely();
 
         Assertions.assertEquals(BAD_REQUEST.getStatusCode(), actual.getStatus());
         Assertions.assertEquals("The airline with id: " + expected.getId() + " already exist", actual.getEntity());
@@ -57,11 +59,11 @@ class AirlineControllerTest {
                 new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States")
         );
 
-        Mockito.when(airlineService.getAllAirlines()).thenReturn(expected);
+        Mockito.when(airlineService.getAllAirlines()).thenReturn(Multi.createFrom().iterable(expected));
 
-        List<AirlineEntity> actual = underTest.getAllAirlines();
+        var actual = underTest.getAllAirlines().subscribe().asStream().toArray();
 
-        Assertions.assertArrayEquals(expected.toArray(), actual.toArray());
+        Assertions.assertArrayEquals(expected.toArray(), actual);
     }
 
     @Test
@@ -69,9 +71,9 @@ class AirlineControllerTest {
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(airlineService.getAirline(expected.getId())).thenReturn(Optional.of(expected));
+        Mockito.when(airlineService.getAirline(expected.getId())).thenReturn(Uni.createFrom().item(expected));
 
-        Response actual = underTest.getAirline(expected.getId());
+        Response actual = underTest.getAirline(expected.getId()).await().indefinitely();
 
         Assertions.assertEquals(OK.getStatusCode(), actual.getStatus());
         Assertions.assertEquals(expected, actual.getEntity());
@@ -82,9 +84,9 @@ class AirlineControllerTest {
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(airlineService.getAirline(expected.getId())).thenReturn(Optional.empty());
+        Mockito.when(airlineService.getAirline(expected.getId())).thenReturn(Uni.createFrom().failure(new Exception()));
 
-        Response actual = underTest.getAirline(expected.getId());
+        Response actual = underTest.getAirline(expected.getId()).await().indefinitely();
 
         Assertions.assertEquals(NOT_FOUND.getStatusCode(), actual.getStatus());
         Assertions.assertEquals("The airline with id: " + expected.getId() + " doesn't exist", actual.getEntity());
@@ -95,9 +97,9 @@ class AirlineControllerTest {
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(airlineService.updateAirline(expected.getId(), expected)).thenReturn(Optional.of(expected));
+        Mockito.when(airlineService.updateAirline(expected.getId(), expected)).thenReturn(Uni.createFrom().item(expected));
 
-        Response actual = underTest.updateAirline(expected.getId(), expected);
+        Response actual = underTest.updateAirline(expected.getId(), expected).await().indefinitely();
 
         Assertions.assertEquals(CREATED.getStatusCode(), actual.getStatus());
         Assertions.assertEquals(expected, actual.getEntity());
@@ -108,9 +110,9 @@ class AirlineControllerTest {
 
         AirlineEntity expected = new AirlineEntity(1, "airline", "American Airlines", "AA", "AAL", "AMERICAN", "United States");
 
-        Mockito.when(airlineService.updateAirline(expected.getId(), expected)).thenReturn(Optional.empty());
+        Mockito.when(airlineService.updateAirline(expected.getId(), expected)).thenReturn(Uni.createFrom().failure(new Exception()));
 
-        Response actual = underTest.updateAirline(expected.getId(), expected);
+        Response actual = underTest.updateAirline(expected.getId(), expected).await().indefinitely();
 
         Assertions.assertEquals(NOT_FOUND.getStatusCode(), actual.getStatus());
         Assertions.assertEquals("The airline with id: " + expected.getId() + " doesn't exist", actual.getEntity());
@@ -121,9 +123,9 @@ class AirlineControllerTest {
 
         long id = 1;
 
-        Mockito.when(airlineService.deleteAirline(id)).thenReturn(true);
+        Mockito.when(airlineService.deleteAirline(id)).thenReturn(Uni.createFrom().item(true));
 
-        Response actual = underTest.deleteAirline(id);
+        Response actual = underTest.deleteAirline(id).await().indefinitely();
 
         Assertions.assertEquals(NO_CONTENT.getStatusCode(), actual.getStatus());
     }
@@ -133,9 +135,9 @@ class AirlineControllerTest {
 
         long id = 1;
 
-        Mockito.when(airlineService.deleteAirline(id)).thenReturn(false);
+        Mockito.when(airlineService.deleteAirline(id)).thenReturn(Uni.createFrom().failure(new Exception()));
 
-        Response actual = underTest.deleteAirline(id);
+        Response actual = underTest.deleteAirline(id).await().indefinitely();
 
         Assertions.assertEquals(NOT_FOUND.getStatusCode(), actual.getStatus());
         Assertions.assertEquals("The airline with id: " + id + " doesn't exist", actual.getEntity());

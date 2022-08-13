@@ -1,5 +1,7 @@
 package org.egevorgyan.controller;
 
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
 import lombok.AllArgsConstructor;
 import org.egevorgyan.model.AirlineEntity;
 import org.egevorgyan.service.AirlineService;
@@ -7,8 +9,6 @@ import org.egevorgyan.service.AirlineService;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.List;
-import java.util.Optional;
 
 import static javax.ws.rs.core.Response.Status.*;
 
@@ -21,47 +21,47 @@ public class AirlineController {
     private AirlineService airlineService;
 
     @POST
-    public Response addAirline(AirlineEntity airlineEntity) {
+    public Uni<Response> addAirline(AirlineEntity airlineEntity) {
         long id = airlineEntity.getId();
-        Optional<AirlineEntity> response = airlineService.createAirline(id, airlineEntity);
-        if(response.isPresent()) {
-            return Response.ok(response.get()).status(CREATED).build();
-        }
-        return Response.status(BAD_REQUEST).entity("The airline with id: " + id + " already exist").build();
+        return airlineService.createAirline(id, airlineEntity)
+                .onItem()
+                .transform(response -> Response.ok(response).status(CREATED).build())
+                .onFailure()
+                .recoverWithItem(Response.status(BAD_REQUEST).entity("The airline with id: " + id + " already exist").build());
     }
 
     @GET
-    public List<AirlineEntity> getAllAirlines() {
+    public Multi<AirlineEntity> getAllAirlines() {
         return airlineService.getAllAirlines();
     }
 
     @GET
     @Path("/{id}")
-    public Response getAirline(@PathParam("id") long id) {
-        Optional<AirlineEntity> airlineEntity = airlineService.getAirline(id);
-        if(airlineEntity.isPresent()) {
-            return Response.ok(airlineEntity.get()).build();
-        }
-        return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
+    public Uni<Response> getAirline(@PathParam("id") long id) {
+        return airlineService.getAirline(id)
+                .onItem()
+                .transform(response -> Response.ok(response).build())
+                .onFailure()
+                .recoverWithItem(Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build());
     }
 
     @PUT
     @Path("/{id}")
-    public Response updateAirline(@PathParam("id") long id, AirlineEntity airlineEntity) {
-        Optional<AirlineEntity> response = airlineService.updateAirline(id, airlineEntity);
-        if(response.isPresent()) {
-            return Response.ok(response.get()).status(CREATED).build();
-        }
-        return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
+    public Uni<Response> updateAirline(@PathParam("id") long id, AirlineEntity airlineEntity) {
+        return airlineService.updateAirline(id, airlineEntity)
+                .onItem()
+                .transform(response -> Response.ok(response).status(CREATED).build())
+                .onFailure()
+                .recoverWithItem(Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build());
     }
 
     @DELETE
     @Path("/{id}")
-    public Response deleteAirline(@PathParam("id") long id) {
-        boolean deleted = airlineService.deleteAirline(id);
-        if(deleted) {
-            return Response.status(NO_CONTENT).build();
-        }
-        return Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build();
+    public Uni<Response> deleteAirline(@PathParam("id") long id) {
+        return airlineService.deleteAirline(id)
+                .onItem()
+                .transform(response -> Response.status(NO_CONTENT).build())
+                .onFailure()
+                .recoverWithItem(Response.status(NOT_FOUND).entity("The airline with id: " + id + " doesn't exist").build());
     }
 }
